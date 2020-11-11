@@ -14,7 +14,10 @@ namespace Basic
         private string Letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
         private string AlphaNum;
         private string[] Keywords = new string[] {
-            "var"
+            "var",
+            "or",
+            "and",
+            "not"
         };
 
         public Lexer(string text, string fileName)
@@ -76,11 +79,6 @@ namespace Basic
                     tokens.Append(new Token(TokenType.Pow, pos_start: pos));
                     Advance();
                 }
-                else if (current_char == "=")
-                {
-                    tokens.Append(new Token(TokenType.EQ, pos_start: pos));
-                    Advance();
-                }
                 else if (current_char == "(")
                 {
                     tokens.Append(new Token(TokenType.LParen, pos_start: pos));
@@ -90,6 +88,24 @@ namespace Basic
                 {
                     tokens.Append(new Token(TokenType.RParen, pos_start: pos));
                     Advance();
+                }
+                else if (current_char == "!")
+                {
+                    var result = MakeNotEqualTo();
+                    if (result.Item2 != null) return Tuple.Create(null as PythonCollection<Token>, result.Item2);
+                    tokens.Append(result.Item1);
+                }
+                else if (current_char == "=")
+                {                    
+                    tokens.Append(MakeEqualTo());
+                }
+                else if (current_char == "<")
+                {
+                    tokens.Append(MakeLessThan());
+                }
+                else if (current_char == ">")
+                {
+                    tokens.Append(MakeGreaterThan());
                 }
                 else
                 {
@@ -116,6 +132,54 @@ namespace Basic
                 return new Token(TokenType.KEYWORD, identifier, start, pos);
             return new Token(TokenType.INDENTIFIER, identifier, start, pos);
         }
+
+        private Tuple<Token, CompilationError> MakeNotEqualTo()
+        {
+            var start = pos.Copy();
+            Advance();
+            if (current_char == "=")
+            {
+                Advance();
+                return Tuple.Create(new Token(TokenType.NE, pos_start: start, pos_end: pos), null as CompilationError);
+            }
+            Advance();
+            return Tuple.Create(null as Token, new ExpectedCharError("Expected '='", start, pos) as CompilationError);
+        }
+        private Token MakeEqualTo()
+        {
+            var start = pos.Copy();
+            Advance();
+            if (current_char == "=")
+            {
+                Advance();
+                return new Token(TokenType.EE, pos_start: start, pos_end: pos);
+            }            
+            return new Token(TokenType.EQ, pos_start: start, pos_end: pos);
+        }
+        private Token MakeLessThan()
+        {
+            var start = pos.Copy();
+            Advance();
+            if (current_char == "=")
+            {
+                Advance();
+                return new Token(TokenType.LTE, pos_start: start, pos_end: pos);
+            }
+            return new Token(TokenType.LT, pos_start: start, pos_end: pos);
+        }
+        private Token MakeGreaterThan()
+        {
+            var start = pos.Copy();
+            Advance();
+            if (current_char == "=")
+            {
+                Advance();
+                return new Token(TokenType.GTE, pos_start: start, pos_end: pos);
+            }
+            return new Token(TokenType.GT, pos_start: start, pos_end: pos);
+        }
+
+
 
         private Token GetNumber()
         {

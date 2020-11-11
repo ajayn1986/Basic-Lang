@@ -20,6 +20,10 @@
         {
             return new InterpreterResult(num, null);
         }
+        public static implicit operator InterpreterResult(Binary bin)
+        {
+            return new InterpreterResult(bin, null);
+        }
         public static implicit operator InterpreterResult(CompilationError error)
         {
             return new InterpreterResult(null, error);

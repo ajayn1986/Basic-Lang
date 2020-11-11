@@ -31,7 +31,14 @@ namespace Basic
 
         public ParseResult Parse()
         {
-            return Expr();
+            var res = Expr();
+            if (res.Error == null && current_token.Type != TokenType.EOF)
+                return new ParseResult(null, new InvalidSyntaxError(
+                    "Expected '+', '-', '*', '/', '^', '==', '!=', '<', '>', <=', '>=', 'AND' or 'OR'",
+                    current_token.Pos_Start, current_token.Pos_End
+                ));
+            return res;
+
         }
 
 
@@ -54,11 +61,6 @@ namespace Basic
             {
                 Advance();
                 return new ParseResult(new NumberNode(token).SetPos(token.Pos_Start, token.Pos_End), null);
-            }
-            else if (new[] { TokenType.INDENTIFIER }.Contains(token.Type))
-            {
-                Advance();
-                return new ParseResult(new VarAccessNode(token).SetPos(token.Pos_Start, token.Pos_End), null);
             }
             else if (token.Type == TokenType.LParen)
             {
@@ -99,10 +101,71 @@ namespace Basic
                 if (exprResult.Error != null) return exprResult;
                 return new ParseResult(new VarAssignmentNode(var_name, exprResult.Node), null);
             }
+            //return BinOp(Term, TokenType.Plus, TokenType.Minus);
+            return BinCompOp(BoolCompExpr, new Token(TokenType.KEYWORD, "and"), new Token(TokenType.KEYWORD, "or"));
+        }
+
+        private ParseResult BoolCompExpr()
+        {
+            var binResult = BinOp(CompExpr, TokenType.EE, TokenType.NE);
+            if (binResult.Error != null)
+                return new ParseResult(null, new InvalidSyntaxError("Expected int, float, indentifier,'+','-', or 'not'", current_token.Pos_Start, current_token.Pos_End));
+            return binResult;
+        }
+
+        private ParseResult CompExpr()
+        {
+            if (current_token.Matches(TokenType.KEYWORD, "not"))
+            {
+                var op_tok = current_token;
+                Advance();
+                var exprResult = CompExpr();
+                if (exprResult.Error != null) return exprResult;
+                return new ParseResult(new UnaryOpNode(op_tok, exprResult.Node), null);
+            }
+            var binResult = BinOp(ArithExpr, TokenType.LT, TokenType.LTE, TokenType.GT, TokenType.GTE);
+            if (binResult.Error != null)
+                return new ParseResult(null, new InvalidSyntaxError("Expected int, float, indentifier,'+','-', or 'not'", current_token.Pos_Start, current_token.Pos_End));
+            return binResult;
+        }
+
+        private ParseResult ArithExpr()
+        {
             return BinOp(Term, TokenType.Plus, TokenType.Minus);
         }
 
-        private ParseResult BinOp(Func<ParseResult> fn, params TokenType[] tokenTypes)
+        private ParseResult Atom()
+        {
+            var token = current_token;
+            if (token.Type == TokenType.INDENTIFIER)
+            {
+                Advance();
+                return new ParseResult(new VarAccessNode(token).SetPos(token.Pos_Start, token.Pos_End), null);
+            }
+            else if (new[] { TokenType.Int, TokenType.Float }.Contains(token.Type))
+            {
+                Advance();
+                return new ParseResult(new NumberNode(token).SetPos(token.Pos_Start, token.Pos_End), null);
+            }
+            else if (token.Type == TokenType.LParen)
+            {
+                Advance();
+                var exprResult = Expr();
+                if (exprResult.Error != null) return exprResult;
+                if (current_token.Type == TokenType.RParen)
+                {
+                    Advance();
+                    return exprResult;
+                }
+                else
+                {
+                    return new ParseResult(null, new InvalidSyntaxError("Expected ')'", current_token.Pos_Start, current_token.Pos_End));
+                }
+            }
+            return new ParseResult(null, new InvalidSyntaxError("Expected int, float, indentifier,'+','-', or '('", current_token.Pos_Start, current_token.Pos_End));
+        }
+
+        private ParseResult BinOp(Func<ParseResult> fn, params Token[] tokenTypes)
         {
             var leftParse = fn();
             if (leftParse.Error != null)
@@ -116,6 +179,24 @@ namespace Basic
                 if (rightParse.Error != null) return rightParse;
                 var right = rightParse.Node;
                 left = new BinOpNode(left, op_tok, right).SetPos(left.Pos_Start, right.Pos_End);
+            }
+            return new ParseResult(left, null);
+        }
+
+        private ParseResult BinCompOp(Func<ParseResult> fn, params Token[] tokenTypes)
+        {
+            var leftParse = fn();
+            if (leftParse.Error != null)
+                return leftParse;
+            var left = leftParse.Node;
+            while (tokenTypes.Contains(current_token))
+            {
+                var op_tok = current_token;
+                Advance();
+                var rightParse = fn();
+                if (rightParse.Error != null) return rightParse;
+                var right = rightParse.Node;
+                left = new ConditionCompositeNode(left, op_tok, right).SetPos(left.Pos_Start, right.Pos_End);
             }
             return new ParseResult(left, null);
         }

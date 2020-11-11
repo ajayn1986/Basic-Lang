@@ -12,6 +12,12 @@
         LParen,
         RParen,
         EQ,
+        NE,
+        EE,
+        LT,
+        LTE,
+        GT,
+        GTE,
         INDENTIFIER,
         KEYWORD,
         EOF

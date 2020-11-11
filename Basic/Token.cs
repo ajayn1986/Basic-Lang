@@ -31,6 +31,13 @@
             return $"{Type}:{Value}";
         }
 
+        public override bool Equals(object obj)
+        {
+            if (obj is TokenType) return this.Type == (TokenType)obj && this.Value == null;
+            if (obj is Token) return ((Token)obj).Matches(this.Type, this.Value);
+            return false;
+        }
+
         public static implicit operator Token(TokenType type)
         {
             return new Token(type);

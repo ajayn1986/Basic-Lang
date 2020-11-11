@@ -46,6 +46,35 @@ namespace Basic
             return new Number(Math.Pow(Value, num.Value)).SetContext(this.Context);
         }
 
+        public InterpreterResult ComparisonEq(Number num)
+        {
+            return new Binary(this.Value == num.Value).SetContext(this.Context);
+        }
+
+        public InterpreterResult ComparisonNe(Number num)
+        {
+            return new Binary(this.Value != num.Value).SetContext(this.Context);
+        }
+
+        public InterpreterResult ComparisonLt(Number num)
+        {
+            return new Binary(this.Value < num.Value).SetContext(this.Context);
+        }
+
+        public InterpreterResult ComparisonGt(Number num)
+        {
+            return new Binary(this.Value > num.Value).SetContext(this.Context);
+        }
+
+        public InterpreterResult ComparisonLte(Number num)
+        {
+            return new Binary(this.Value <= num.Value).SetContext(this.Context);
+        }
+
+        public InterpreterResult ComparisonGte(Number num)
+        {
+            return new Binary(this.Value >= num.Value).SetContext(this.Context);
+        }
         public Number Copy()
         {
             Number copy = new Number(this.Value);

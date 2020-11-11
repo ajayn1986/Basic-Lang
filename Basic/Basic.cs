@@ -8,6 +8,8 @@ namespace Basic
         public static object Run(string text, string filename)
         {
             globalSymbolTable["Null"] = new Number(0);
+            globalSymbolTable["true"] = new Binary(true);
+            globalSymbolTable["false"] = new Binary(false);
             Lexer lexer = new Lexer(text, filename);
             var lexerResult = lexer.MakeTokens();
             if (lexerResult.Item2 != null) return lexerResult.Item2;
