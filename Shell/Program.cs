@@ -16,7 +16,7 @@ namespace Shell
             {
                 string code = Input("Basic > ");
                 var result = Basic.Basic.Run(code, "Console");
-                Console.WriteLine(result.ToString());
+                Console.WriteLine(Convert.ToString(result));
             }
         }
 

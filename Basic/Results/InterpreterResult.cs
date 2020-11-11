@@ -15,7 +15,10 @@
             if (Error != null) return Error.ToString();
             return Result.ToString();
         }
-
+        public static implicit operator InterpreterResult(Null nill)
+        {
+            return new InterpreterResult(nill, null);
+        }
         public static implicit operator InterpreterResult(Number num)
         {
             return new InterpreterResult(num, null);

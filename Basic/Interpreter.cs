@@ -42,7 +42,9 @@ namespace Basic
                 else
                     return new InterpreterResult(null, new RuntimeError($"Expected boolean expression", ifCase.Condition.Pos_Start, ifCase.Condition.Pos_End, context));
             }
-            return Visit(node.ElseCase.Expr, context);
+            if (node.ElseCase != null)
+                return Visit(node.ElseCase.Expr, context);
+            return new InterpreterResult(null, null);
         }
         public InterpreterResult Visit(ConditionCompositeNode node, Context context)
         {
@@ -72,11 +74,37 @@ namespace Basic
             InterpreterResult result = null;
             InterpreterResult leftResult = Visit(node.Left, context);
             if (leftResult.Error != null) return leftResult;
-            if (leftResult.Result is Binary && new[] { TokenType.EE, TokenType.NE }.Contains(node.Op_tok.Type))
+            if (leftResult.Result is Null && new[] { TokenType.EE, TokenType.NE }.Contains(node.Op_tok.Type))
+            {
+                Null left = leftResult.Result;
+                InterpreterResult rightResult = Visit(node.Right, context);
+                if (rightResult.Error != null) return rightResult;
+
+                dynamic right = rightResult.Result;
+                if (node.Op_tok.Type == TokenType.EE)
+                    result = left.ComparisonEq(right);
+                if (node.Op_tok.Type == TokenType.NE)
+                    result = left.ComparisonNe(right);
+                if (result.Error == null)
+                    result.Result.SetPos(left.Start_pos, right.End_pos);
+                return result;
+            }
+            else if (leftResult.Result is Binary && new[] { TokenType.EE, TokenType.NE }.Contains(node.Op_tok.Type))
             {
                 Binary left = leftResult.Result;
                 InterpreterResult rightResult = Visit(node.Right, context);
                 if (rightResult.Error != null) return rightResult;
+                if (rightResult.Result is Null)
+                {
+                    Null rightNull = rightResult.Result as Null;
+                    if (node.Op_tok.Type == TokenType.EE)
+                        result = rightNull.ComparisonEq(left);
+                    if (node.Op_tok.Type == TokenType.NE)
+                        result = rightNull.ComparisonNe(left);
+                    if (result.Error == null)
+                        result.Result.SetPos(left.Start_pos, rightNull.End_pos);
+                    return result;
+                }
                 if (!(rightResult.Result is Binary))
                 {
                     return new InterpreterResult(null, new RuntimeError($"Expected boolean expression", node.Right.Pos_Start, node.Right.Pos_End, context));
@@ -99,6 +127,17 @@ namespace Basic
                 Number left = leftResult.Result;
                 InterpreterResult rightResult = Visit(node.Right, context);
                 if (rightResult.Error != null) return rightResult;
+                if (rightResult.Result is Null)
+                {
+                    Null rightNull = rightResult.Result as Null;
+                    if (node.Op_tok.Type == TokenType.EE)
+                        result = rightNull.ComparisonEq(left);
+                    if (node.Op_tok.Type == TokenType.NE)
+                        result = rightNull.ComparisonNe(left);
+                    if (result.Error == null)
+                        result.Result.SetPos(left.Start_pos, rightNull.End_pos);
+                    return result;
+                }
                 if (!(rightResult.Result is Number))
                 {
                     return new InterpreterResult(null, new RuntimeError($"Expected number", node.Right.Pos_Start, node.Right.Pos_End, context));
@@ -158,7 +197,7 @@ namespace Basic
         public InterpreterResult Visit(VarDeclarationNode node, Context context)
         {
             var value = context.SymbolTable.IsDefined(node.VarNameTok.Value);
-            if(value)
+            if (value)
                 return new InterpreterResult(null, new RuntimeError($"{node.VarNameTok.Value} is already defined"
                     , node.VarNameTok.Pos_Start, node.VarNameTok.Pos_End, context));
             var result = Visit(node.ValueNode, context);
@@ -179,13 +218,14 @@ namespace Basic
 
         public InterpreterResult Visit(VarAccessNode node, Context context)
         {
-            var value = context.SymbolTable.IsDefined(node.VarNameTok.Value);
-            if (!value)
+            if (!context.SymbolTable.IsDefined(node.VarNameTok.Value))
             {
                 return new InterpreterResult(null, new RuntimeError($"{node.VarNameTok.Value} is not defined", node.Pos_Start, node.Pos_End, context));
             }
+            var value = context.SymbolTable[node.VarNameTok.Value];
             if (value is Binary) return (value as Binary).Copy().SetPos(node.Pos_Start, node.Pos_End);
-            return (value as Number).Copy().SetPos(node.Pos_Start, node.Pos_End);
+            if (value is Number) (value as Number).Copy().SetPos(node.Pos_Start, node.Pos_End);
+            return (value as Null).Copy().SetPos(node.Pos_Start, node.Pos_End);
         }
     }
 }

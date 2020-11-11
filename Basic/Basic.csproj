@@ -51,6 +51,7 @@
     <Compile Include="Errors\ExpectedCharError.cs" />
     <Compile Include="Nodes\IfNode.cs" />
     <Compile Include="Interpreter.cs" />
+    <Compile Include="Null.cs" />
     <Compile Include="Results\InterpreterResult.cs" />
     <Compile Include="Errors\InvalidCharError.cs" />
     <Compile Include="Errors\InvalidSyntaxError.cs" />

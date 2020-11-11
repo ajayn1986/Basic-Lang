@@ -7,7 +7,7 @@ namespace Basic
         public static SymbolTable globalSymbolTable = new SymbolTable();
         public static object Run(string text, string filename)
         {
-            globalSymbolTable["Null"] = new Number(0);
+            globalSymbolTable["null"] = new Null();
             globalSymbolTable["true"] = new Binary(true);
             globalSymbolTable["false"] = new Binary(false);
             Lexer lexer = new Lexer(text, filename);
