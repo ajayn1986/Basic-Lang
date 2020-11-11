@@ -197,6 +197,7 @@ namespace Basic
         {
             List<IfCase> cases = new List<IfCase>();
             ElseCase elseCase = null;
+            var start = current_token.Pos_Start.Copy();
             Advance();
             var conditionResult = Expr();
             if (conditionResult.Error != null)
@@ -244,8 +245,8 @@ namespace Basic
                 }
                 elseCase = new ElseCase(elseResult.Node);
             }
-            Advance();
-            return new ParseResult(new IfNode(cases, elseCase), null);
+            
+            return new ParseResult(new IfNode(cases, elseCase).SetPos(start, elseCase?.Expr.Pos_End ?? cases[cases.Count - 1].Expr.Pos_End), null);
         }
     }
 }
