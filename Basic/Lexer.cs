@@ -17,7 +17,11 @@ namespace Basic
             "var",
             "or",
             "and",
-            "not"
+            "not",
+            "if",
+            "then",
+            "elif",
+            "else"
         };
 
         public Lexer(string text, string fileName)

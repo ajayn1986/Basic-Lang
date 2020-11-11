@@ -52,37 +52,17 @@ namespace Basic
                 if (factorResult.Error != null) return factorResult;
                 return new ParseResult(new UnaryOpNode(token, factorResult.Node).SetPos(token.Pos_Start, factorResult.Node.Pos_End), null);
             }
-            else if (token.Type == TokenType.INDENTIFIER)
-            {
-                Advance();
-                return new ParseResult(new VarAccessNode(token).SetPos(token.Pos_Start, token.Pos_End), null);
-            }
-            else if (new[] { TokenType.Int, TokenType.Float }.Contains(token.Type))
-            {
-                Advance();
-                return new ParseResult(new NumberNode(token).SetPos(token.Pos_Start, token.Pos_End), null);
-            }
-            else if (token.Type == TokenType.LParen)
-            {
-                Advance();
-                var exprResult = Expr();
-                if (exprResult.Error != null) return exprResult;
-                if (current_token.Type == TokenType.RParen)
-                {
-                    Advance();
-                    return exprResult;
-                }
-                else
-                {
-                    return new ParseResult(null, new InvalidSyntaxError("Expected ')'", current_token.Pos_Start, current_token.Pos_End));
-                }
-            }
-            return new ParseResult(null, new InvalidSyntaxError("Expected Int or Float", current_token.Pos_Start, current_token.Pos_End));
+            return Power();
+        }
+
+        private ParseResult Power()
+        {
+            return BinOp(Atom, TokenType.Pow);
         }
 
         private ParseResult Term()
         {
-            return BinOp(Factor, TokenType.Mul, TokenType.Div, TokenType.Pow);
+            return BinOp(Factor, TokenType.Mul, TokenType.Div);
         }
 
         private ParseResult Expr()
@@ -99,7 +79,7 @@ namespace Basic
                 Advance();
                 var exprResult = Expr();
                 if (exprResult.Error != null) return exprResult;
-                return new ParseResult(new VarAssignmentNode(var_name, exprResult.Node), null);
+                return new ParseResult(new VarDeclarationNode(var_name, exprResult.Node), null);
             }
             //return BinOp(Term, TokenType.Plus, TokenType.Minus);
             return BinCompOp(BoolCompExpr, new Token(TokenType.KEYWORD, "and"), new Token(TokenType.KEYWORD, "or"));
@@ -140,7 +120,15 @@ namespace Basic
             if (token.Type == TokenType.INDENTIFIER)
             {
                 Advance();
-                return new ParseResult(new VarAccessNode(token).SetPos(token.Pos_Start, token.Pos_End), null);
+                if (current_token.Equals(TokenType.EQ))
+                {
+                    Advance();
+                    var expr = Expr();
+                    if (expr.Error != null) return expr;
+                    return new ParseResult(new VarAssignmentNode(token, expr.Node).SetPos(token.Pos_Start, token.Pos_End), null);
+                }
+                else
+                    return new ParseResult(new VarAccessNode(token).SetPos(token.Pos_Start, token.Pos_End), null);
             }
             else if (new[] { TokenType.Int, TokenType.Float }.Contains(token.Type))
             {
@@ -161,6 +149,10 @@ namespace Basic
                 {
                     return new ParseResult(null, new InvalidSyntaxError("Expected ')'", current_token.Pos_Start, current_token.Pos_End));
                 }
+            }
+            else if (token.Equals(new Token(TokenType.KEYWORD, "if")))
+            {
+                return IfExpr();
             }
             return new ParseResult(null, new InvalidSyntaxError("Expected int, float, indentifier,'+','-', or '('", current_token.Pos_Start, current_token.Pos_End));
         }
@@ -199,6 +191,61 @@ namespace Basic
                 left = new ConditionCompositeNode(left, op_tok, right).SetPos(left.Pos_Start, right.Pos_End);
             }
             return new ParseResult(left, null);
+        }
+
+        private ParseResult IfExpr()
+        {
+            List<IfCase> cases = new List<IfCase>();
+            ElseCase elseCase = null;
+            Advance();
+            var conditionResult = Expr();
+            if (conditionResult.Error != null)
+            {
+                return conditionResult;
+            }
+
+            if (!current_token.Equals(new Token(TokenType.KEYWORD, "then")))
+                return new ParseResult(null, new InvalidSyntaxError("Expected 'then'", current_token.Pos_Start, current_token.Pos_End));
+            Advance();
+            var ifResult = Expr();
+            if (ifResult.Error != null)
+            {
+                return ifResult;
+            }
+            cases.Add(new IfCase(conditionResult.Node, ifResult.Node));
+
+            while (current_token.Equals(new Token(TokenType.KEYWORD, "elif")))
+            {
+                Advance();
+                var elifConditionResult = Expr();
+                if (elifConditionResult.Error != null)
+                {
+                    return elifConditionResult;
+                }
+
+                if (!current_token.Equals(new Token(TokenType.KEYWORD, "then")))
+                    return new ParseResult(null, new InvalidSyntaxError("Expected 'then'", current_token.Pos_Start, current_token.Pos_End));
+                Advance();
+                var elifResult = Expr();
+                if (elifResult.Error != null)
+                {
+                    return elifResult;
+                }
+                cases.Add(new IfCase(elifConditionResult.Node, elifResult.Node));
+            }
+
+            if ((current_token.Equals(new Token(TokenType.KEYWORD, "else"))))
+            {
+                Advance();
+                var elseResult = Expr();
+                if (elseResult.Error != null)
+                {
+                    return elseResult;
+                }
+                elseCase = new ElseCase(elseResult.Node);
+            }
+            Advance();
+            return new ParseResult(new IfNode(cases, elseCase), null);
         }
     }
 }

@@ -18,11 +18,31 @@ namespace Basic
                 return Visit(node as UnaryOpNode, context);
             if (node is NumberNode)
                 return Visit(node as NumberNode, context);
+            if (node is VarDeclarationNode)
+                return Visit(node as VarDeclarationNode, context);
             if (node is VarAssignmentNode)
                 return Visit(node as VarAssignmentNode, context);
             if (node is VarAccessNode)
                 return Visit(node as VarAccessNode, context);
+            if (node is IfNode)
+                return Visit(node as IfNode, context);
             return null;
+        }
+        public InterpreterResult Visit(IfNode node, Context context)
+        {
+            foreach (IfCase ifCase in node.IfCases)
+            {
+                var caseResult = Visit(ifCase.Condition, context);
+                if (caseResult.Error != null) return caseResult;
+                if (caseResult.Result is Binary)
+                {
+                    if (((Binary)caseResult.Result).IsTrue())
+                        return Visit(ifCase.Expr, context);
+                }
+                else
+                    return new InterpreterResult(null, new RuntimeError($"Expected boolean expression", ifCase.Condition.Pos_Start, ifCase.Condition.Pos_End, context));
+            }
+            return Visit(node.ElseCase.Expr, context);
         }
         public InterpreterResult Visit(ConditionCompositeNode node, Context context)
         {
@@ -135,8 +155,22 @@ namespace Basic
             return new InterpreterResult(new Number(node.Tok.Value).SetPos(node.Tok.Pos_Start, node.Tok.Pos_End).SetContext(context), null);
         }
 
+        public InterpreterResult Visit(VarDeclarationNode node, Context context)
+        {
+            var value = context.SymbolTable.IsDefined(node.VarNameTok.Value);
+            if(value)
+                return new InterpreterResult(null, new RuntimeError($"{node.VarNameTok.Value} is already defined"
+                    , node.VarNameTok.Pos_Start, node.VarNameTok.Pos_End, context));
+            var result = Visit(node.ValueNode, context);
+            if (result.Error != null) return result.Error;
+            context.SymbolTable[node.VarNameTok.Value] = result.Result;
+            return result;
+        }
+
         public InterpreterResult Visit(VarAssignmentNode node, Context context)
         {
+            if (!context.SymbolTable.IsDefined(node.VarNameTok.Value))
+                return new InterpreterResult(null, new RuntimeError($"{node.VarNameTok.Value} is not defined", node.VarNameTok.Pos_Start, node.VarNameTok.Pos_End, context));
             var result = Visit(node.ValueNode, context);
             if (result.Error != null) return result.Error;
             context.SymbolTable[node.VarNameTok.Value] = result.Result;
@@ -145,8 +179,8 @@ namespace Basic
 
         public InterpreterResult Visit(VarAccessNode node, Context context)
         {
-            var value = context.SymbolTable[node.VarNameTok.Value];
-            if (value == null)
+            var value = context.SymbolTable.IsDefined(node.VarNameTok.Value);
+            if (!value)
             {
                 return new InterpreterResult(null, new RuntimeError($"{node.VarNameTok.Value} is not defined", node.Pos_Start, node.Pos_End, context));
             }

@@ -19,15 +19,25 @@ namespace Basic
 
         public dynamic this[string name]
         {
-            get {
+            get
+            {
                 dynamic value = symblols.ContainsKey(name) ? symblols[name] : null;
                 if (value == null && Parent != null)
                     value = Parent[name];
                 return value;
             }
-            set {
+            set
+            {
                 symblols[name] = value;
             }
+        }
+
+        public bool IsDefined(string name)
+        {
+            bool defined = symblols.ContainsKey(name);
+            if (!defined && Parent != null)
+                return Parent.IsDefined(name);
+            return defined;
         }
 
         public void Remove(string name)

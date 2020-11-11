@@ -58,5 +58,10 @@ namespace Basic
         {
             return new Binary(!this.Value).SetContext(this.Context);
         }
+
+        public bool IsTrue()
+        {
+            return Value;
+        }
     }
 }
