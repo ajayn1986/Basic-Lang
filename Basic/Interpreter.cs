@@ -26,7 +26,66 @@ namespace Basic
                 return Visit(node as VarAccessNode, context);
             if (node is IfNode)
                 return Visit(node as IfNode, context);
+            if (node is ForNode)
+                return Visit(node as ForNode, context);
+            if (node is WhileNode)
+                return Visit(node as WhileNode, context);
             return null;
+        }
+        public InterpreterResult Visit(WhileNode node, Context context)
+        {
+            var conditionResult = Visit(node.ConditionNode, context);
+            if (conditionResult.Error != null) return conditionResult;
+            if (!(conditionResult.Result is Binary))
+                return new RuntimeError("Expected boolean expression", node.ConditionNode.Pos_Start, node.ConditionNode.Pos_End, context);
+            while ((conditionResult.Result as Binary).IsTrue())
+            {
+                var bodyResult = Visit(node.BodyNode, context);
+                if (bodyResult.Error != null) return bodyResult;
+                conditionResult = Visit(node.ConditionNode, context);
+            }
+            return new InterpreterResult(null, null);
+        }
+        public InterpreterResult Visit(ForNode node, Context context)
+        {
+            Number start, end;
+            double i;
+            var startValueResult = Visit(node.StartValueNode, context);
+            if (startValueResult.Error != null) return startValueResult;
+            if (!(startValueResult.Result is Number))
+                return new RuntimeError("Expected numerical expression", node.StartValueNode.Pos_Start, node.StartValueNode.Pos_End, context);
+            start = startValueResult.Result;
+            var endValueResult = Visit(node.EndValueNode, context);
+            if (endValueResult.Error != null) return endValueResult;
+            if (!(endValueResult.Result is Number))
+                return new RuntimeError("Expected numerical expression", node.EndValueNode.Pos_Start, node.EndValueNode.Pos_End, context);
+            end = endValueResult.Result;
+            Number step = null;
+            if (node.StepValueNode != null)
+            {
+                var stepValueResult = Visit(node.StepValueNode, context);
+                if (stepValueResult.Error != null) return stepValueResult;
+                if (!(stepValueResult.Result is Number))
+                    return new RuntimeError("Expected numerical expression",node.StepValueNode.Pos_Start, node.StepValueNode.Pos_End, context);
+            }
+            if (step == null)
+                step = new Number(1);
+            i = start.Value;
+            Func<double, bool> condition = null;
+            if ((start.ComparisonLt(end).Result as Binary).IsTrue())            
+                condition = (k) => k < end.Value;
+            else
+                condition = (k) => k > end.Value;
+
+            while (condition(i))
+            {
+                context.SymbolTable[node.identifierToken.Value] = new Number(i);
+                var bodyResult = Visit(node.BodyNode, context);
+                if (bodyResult.Error != null) return bodyResult;
+                i += step.Value;
+            }
+            return new InterpreterResult(null, null);
+
         }
         public InterpreterResult Visit(IfNode node, Context context)
         {
@@ -224,7 +283,7 @@ namespace Basic
             }
             var value = context.SymbolTable[node.VarNameTok.Value];
             if (value is Binary) return (value as Binary).Copy().SetPos(node.Pos_Start, node.Pos_End);
-            if (value is Number) (value as Number).Copy().SetPos(node.Pos_Start, node.Pos_End);
+            if (value is Number) return (value as Number).Copy().SetPos(node.Pos_Start, node.Pos_End);
             return (value as Null).Copy().SetPos(node.Pos_Start, node.Pos_End);
         }
     }

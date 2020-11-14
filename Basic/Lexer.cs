@@ -21,7 +21,11 @@ namespace Basic
             "if",
             "then",
             "elif",
-            "else"
+            "else",
+            "for",
+            "to",
+            "step",
+            "while"
         };
 
         public Lexer(string text, string fileName)

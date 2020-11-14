@@ -15,5 +15,14 @@
             if (Error != null) return Error.ToString();
             return Node.ToString();
         }
+
+        public static implicit operator ParseResult(CompilationError error)
+        {
+            return new ParseResult(null, error);
+        }
+        public static implicit operator ParseResult(Node node)
+        {
+            return new ParseResult(node, null);
+        }
     }
 }

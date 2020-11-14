@@ -8,7 +8,7 @@ namespace Basic
 {
     public class Number
     {
-        dynamic Value;
+        public dynamic Value { get; set; }
         public Position Start_pos { get; set; } = null;
         public Position End_pos { get; set; } = null;
         public Context Context { get; set; }

@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="Basic.cs" />
     <Compile Include="Binary.cs" />
+    <Compile Include="ForNode.cs" />
     <Compile Include="Nodes\BinOpNode.cs" />
     <Compile Include="Errors\CompilationError.cs" />
     <Compile Include="Nodes\ConditionCompositeNode.cs" />
@@ -73,6 +74,7 @@
     <Compile Include="Nodes\VarAccessNode.cs" />
     <Compile Include="Nodes\VarAssignmentNode.cs" />
     <Compile Include="Nodes\VarDeclarationNode.cs" />
+    <Compile Include="WhileNode.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="basicGrammar.txt">
