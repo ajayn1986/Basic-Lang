@@ -71,6 +71,7 @@ namespace Basic
                 if (stepValueResult.Error != null) return stepValueResult;
                 if (!(stepValueResult.Result is Number))
                     return new RuntimeError("Expected numerical expression", node.StepValueNode.Pos_Start, node.StepValueNode.Pos_End, context);
+                step = stepValueResult.Result;
             }
             if (step == null)
                 step = new Number(1);
