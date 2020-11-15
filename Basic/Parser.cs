@@ -49,7 +49,7 @@ namespace Basic
             {
                 Advance();
                 var factorResult = Factor();
-                if (factorResult.Error != null) return factorResult;
+                if (factorResult.HasError()) return factorResult;
                 return new UnaryOpNode(token, factorResult.Node).SetPos(token.Pos_Start, factorResult.Node.Pos_End);
             }
             return Power();
@@ -69,26 +69,31 @@ namespace Basic
         {
             if (current_token.Matches(TokenType.KEYWORD, "var"))
             {
-                Advance();
-                if (current_token.Type != TokenType.INDENTIFIER)
-                    return new InvalidSyntaxError("Expected Identifier", current_token.Pos_Start, current_token.Pos_End);
-                var var_name = current_token;
-                Advance();
-                if (current_token.Type != TokenType.EQ)
-                    return new InvalidSyntaxError("Expected '='", current_token.Pos_Start, current_token.Pos_End);
-                Advance();
-                var exprResult = Expr();
-                if (exprResult.Error != null) return exprResult;
-                return new VarDeclarationNode(var_name, exprResult.Node);
+                return GetVarDeclaration();
             }
             //return BinOp(Term, TokenType.Plus, TokenType.Minus);
             return BinCompOp(BoolCompExpr, new Token(TokenType.KEYWORD, "and"), new Token(TokenType.KEYWORD, "or"));
         }
 
+        private ParseResult GetVarDeclaration()
+        {
+            Advance();
+            if (current_token.Type != TokenType.INDENTIFIER)
+                return new InvalidSyntaxError("Expected Identifier", current_token.Pos_Start, current_token.Pos_End);
+            var var_name = current_token;
+            Advance();
+            if (current_token.Type != TokenType.EQ)
+                return new InvalidSyntaxError("Expected '='", current_token.Pos_Start, current_token.Pos_End);
+            Advance();
+            var exprResult = Expr();
+            if (exprResult.HasError()) return exprResult;
+            return new VarDeclarationNode(var_name, exprResult.Node);
+        }
+
         private ParseResult BoolCompExpr()
         {
             var binResult = BinOp(CompExpr, TokenType.EE, TokenType.NE);
-            //if (binResult.Error != null)
+            //if (binResult.HasError())
                 //return new InvalidSyntaxError("Expected int, float, indentifier,'+','-', or 'not'", current_token.Pos_Start, current_token.Pos_End);
             return binResult;
         }
@@ -100,11 +105,11 @@ namespace Basic
                 var op_tok = current_token;
                 Advance();
                 var exprResult = CompExpr();
-                if (exprResult.Error != null) return exprResult;
+                if (exprResult.HasError()) return exprResult;
                 return new UnaryOpNode(op_tok, exprResult.Node);
             }
             var binResult = BinOp(ArithExpr, TokenType.LT, TokenType.LTE, TokenType.GT, TokenType.GTE);
-            //if (binResult.Error != null)
+            //if (binResult.HasError())
                 //return new InvalidSyntaxError("Expected int, float, indentifier,'+','-', or 'not'", current_token.Pos_Start, current_token.Pos_End);
             return binResult;
         }
@@ -124,7 +129,7 @@ namespace Basic
                 {
                     Advance();
                     var expr = Expr();
-                    if (expr.Error != null) return expr;
+                    if (expr.HasError()) return expr;
                     return new VarAssignmentNode(token, expr.Node).SetPos(token.Pos_Start, token.Pos_End);
                 }
                 else
@@ -139,7 +144,7 @@ namespace Basic
             {
                 Advance();
                 var exprResult = Expr();
-                if (exprResult.Error != null) return exprResult;
+                if (exprResult.HasError()) return exprResult;
                 if (current_token.Type == TokenType.RParen)
                 {
                     Advance();
@@ -168,7 +173,7 @@ namespace Basic
         private ParseResult BinOp(Func<ParseResult> fn, params Token[] tokenTypes)
         {
             var leftParse = fn();
-            if (leftParse.Error != null)
+            if (leftParse.HasError())
                 return leftParse;
             var left = leftParse.Node;
             while (tokenTypes.Contains(current_token.Type))
@@ -176,7 +181,7 @@ namespace Basic
                 var op_tok = current_token;
                 Advance();
                 var rightParse = fn();
-                if (rightParse.Error != null) return rightParse;
+                if (rightParse.HasError()) return rightParse;
                 var right = rightParse.Node;
                 left = new BinOpNode(left, op_tok, right).SetPos(left.Pos_Start, right.Pos_End);
             }
@@ -186,7 +191,7 @@ namespace Basic
         private ParseResult BinCompOp(Func<ParseResult> fn, params Token[] tokenTypes)
         {
             var leftParse = fn();
-            if (leftParse.Error != null)
+            if (leftParse.HasError())
                 return leftParse;
             var left = leftParse.Node;
             while (tokenTypes.Contains(current_token))
@@ -194,7 +199,7 @@ namespace Basic
                 var op_tok = current_token;
                 Advance();
                 var rightParse = fn();
-                if (rightParse.Error != null) return rightParse;
+                if (rightParse.HasError()) return rightParse;
                 var right = rightParse.Node;
                 left = new ConditionCompositeNode(left, op_tok, right).SetPos(left.Pos_Start, right.Pos_End);
             }
@@ -206,14 +211,14 @@ namespace Basic
             var start = current_token.Pos_Start.Copy();
             Advance();
             var conditionExpr = Expr();
-            if (conditionExpr.Error != null)
+            if (conditionExpr.HasError())
                 return conditionExpr;
             if (!current_token.Equals(new Token(TokenType.KEYWORD, "then")))
                 return new InvalidSyntaxError("Expected 'then'", current_token.Pos_Start, current_token.Pos_End);
             Advance();
 
             var bodyResult = Expr();
-            if (bodyResult.Error != null) return bodyResult;
+            if (bodyResult.HasError()) return bodyResult;
 
             return new WhileNode(conditionExpr.Node, bodyResult.Node);
         }
@@ -222,41 +227,49 @@ namespace Basic
         {
             var start = current_token.Pos_Start.Copy();
             Advance();
-            Token identifierToken = null;
-            if (current_token.Type != TokenType.INDENTIFIER)
+            Node initNode = null;
+            if (current_token.Type == TokenType.INDENTIFIER)
             {
-                return new InvalidSyntaxError("Expected 'then'", current_token.Pos_Start, current_token.Pos_End);
+                Token idToken = current_token;
+                Advance();
+                if (current_token.Equals(TokenType.EQ))
+                {
+                    Advance();
+                    var expr = Expr();
+                    if (expr.HasError()) return expr;
+                    initNode = new VarAssignmentNode(idToken, expr.Node).SetPos(idToken.Pos_Start, idToken.Pos_End);
+                }
             }
-            identifierToken = current_token;
-            Advance();
-
-            if(current_token.Type != TokenType.EQ)
-                return new InvalidSyntaxError("Expected '='", current_token.Pos_Start, current_token.Pos_End);
-            Advance();
-
-            var initResult = Expr();
-            if (initResult.Error != null) return initResult;
+            else if (current_token.Equals(new Token(TokenType.KEYWORD, "var")))
+            {
+                var declarationResult = GetVarDeclaration();
+                if (declarationResult.HasError()) return declarationResult;
+                initNode = declarationResult.Node;
+            }
+            else
+                return new InvalidSyntaxError("Expected identifier or var", current_token.Pos_Start, current_token.Pos_End);            
+            
             if (!current_token.Equals(new Token(TokenType.KEYWORD,"to")))
                 return new InvalidSyntaxError("Expected 'to'", current_token.Pos_Start, current_token.Pos_End);
             Advance();
 
             var endResult = Expr();
-            if (endResult.Error != null) return endResult;
+            if (endResult.HasError()) return endResult;
             ParseResult stepResult = null;
             if (current_token.Equals(new Token(TokenType.KEYWORD, "step")))
             {
                 Advance();
                 stepResult = Expr();
-                if (stepResult.Error != null) return stepResult;
+                if (stepResult.HasError()) return stepResult;
             }
             if (!current_token.Equals(new Token(TokenType.KEYWORD, "then")))
                 return new InvalidSyntaxError("Expected 'then'", current_token.Pos_Start, current_token.Pos_End);
             Advance();
 
             var bodyResult = Expr();
-            if (bodyResult.Error != null) return bodyResult;
+            if (bodyResult.HasError()) return bodyResult;
 
-            return new ForNode(identifierToken, initResult.Node, endResult.Node, stepResult?.Node, bodyResult.Node).SetPos(start, current_token.Pos_End);
+            return new ForNode(initNode, endResult.Node, stepResult?.Node, bodyResult.Node).SetPos(start, current_token.Pos_End);
         }
 
 
@@ -267,7 +280,7 @@ namespace Basic
             var start = current_token.Pos_Start.Copy();
             Advance();
             var conditionResult = Expr();
-            if (conditionResult.Error != null)
+            if (conditionResult.HasError())
             {
                 return conditionResult;
             }
@@ -276,7 +289,7 @@ namespace Basic
                 return new InvalidSyntaxError("Expected 'then'", current_token.Pos_Start, current_token.Pos_End);
             Advance();
             var ifResult = Expr();
-            if (ifResult.Error != null)
+            if (ifResult.HasError())
             {
                 return ifResult;
             }
@@ -286,7 +299,7 @@ namespace Basic
             {
                 Advance();
                 var elifConditionResult = Expr();
-                if (elifConditionResult.Error != null)
+                if (elifConditionResult.HasError())
                 {
                     return elifConditionResult;
                 }
@@ -295,7 +308,7 @@ namespace Basic
                     return new InvalidSyntaxError("Expected 'then'", current_token.Pos_Start, current_token.Pos_End);
                 Advance();
                 var elifResult = Expr();
-                if (elifResult.Error != null)
+                if (elifResult.HasError())
                 {
                     return elifResult;
                 }
@@ -306,7 +319,7 @@ namespace Basic
             {
                 Advance();
                 var elseResult = Expr();
-                if (elseResult.Error != null)
+                if (elseResult.HasError())
                 {
                     return elseResult;
                 }

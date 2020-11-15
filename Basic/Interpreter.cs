@@ -50,6 +50,10 @@ namespace Basic
         {
             Number start, end;
             double i;
+            Token idToken = node.StartValueNode is VarDeclarationNode ?
+                ((VarDeclarationNode)node.StartValueNode).VarNameTok
+                : ((VarAssignmentNode)node.StartValueNode).VarNameTok;
+
             var startValueResult = Visit(node.StartValueNode, context);
             if (startValueResult.Error != null) return startValueResult;
             if (!(startValueResult.Result is Number))
@@ -66,23 +70,29 @@ namespace Basic
                 var stepValueResult = Visit(node.StepValueNode, context);
                 if (stepValueResult.Error != null) return stepValueResult;
                 if (!(stepValueResult.Result is Number))
-                    return new RuntimeError("Expected numerical expression",node.StepValueNode.Pos_Start, node.StepValueNode.Pos_End, context);
+                    return new RuntimeError("Expected numerical expression", node.StepValueNode.Pos_Start, node.StepValueNode.Pos_End, context);
             }
             if (step == null)
                 step = new Number(1);
             i = start.Value;
             Func<double, bool> condition = null;
-            if ((start.ComparisonLt(end).Result as Binary).IsTrue())            
+            Func<double, double> stepperFunction = null;
+            if ((start.ComparisonLt(end).Result as Binary).IsTrue())
+            {
                 condition = (k) => k < end.Value;
+                stepperFunction = (z) => z;
+            }
             else
+            {
                 condition = (k) => k > end.Value;
-
+                stepperFunction = (z) => z * -1;
+            }
             while (condition(i))
             {
-                context.SymbolTable[node.identifierToken.Value] = new Number(i);
+                context.SymbolTable[idToken.Value] = new Number(i);
                 var bodyResult = Visit(node.BodyNode, context);
                 if (bodyResult.Error != null) return bodyResult;
-                i += step.Value;
+                i += stepperFunction(step.Value);
             }
             return new InterpreterResult(null, null);
 
